@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Islam"
+  given-names: "Ridwanul"
+title: "Msci-Project-Understanding-Plasmoid-Formation-in-the-MARZ-Experiments"
+version: 1.0.0
+date-released: 2025-04-27
+url: "https://github.com/Ridwanul567/Msci-Project-Understanding-Plasmoid-Formation-in-the-MARZ-Experiments"
