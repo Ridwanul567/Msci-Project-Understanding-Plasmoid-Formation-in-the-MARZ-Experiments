@@ -1,0 +1,1494 @@
+class MagRec:
+    def __init__(self,Element= 'Al',Model = 'WA',index = 0,t_i=0,t_f=0,adj=10,y_plane=0.5,x_plane=0.5,title='Non-Radiative',target='y',date='15-11-24'):
+        self.target = target
+        self.Element = Element
+        self.Model = Model
+        self.index = str(index).zfill(2)
+        self.t_i = t_i
+        self.t_f = t_f
+        self.t_spec = t_i
+        self.title = title
+        self._r_array = 20
+        self._x_bounds = [-30,30]
+        self._y_bounds = [-44.8,44.8]
+        self.cells_x = 0
+        self.cells_y = 0
+        self.cells_z = 0
+        self.time = []
+        self.xvals = []
+        self.yvals = []
+        self.rho_Al = []
+        self.press = []
+        self.B_field = []
+        self.vel = []
+        self.resist = []
+        self.curr = []
+        self.Zeff = []
+        self.Ti = []
+        self.Te = []
+        self.rnec = []
+        self.A_vec = []
+        self.rho_Al_T = []
+        self.press_T = []
+        self.B_field_T = []
+        self.vel_T = []
+        self.resist_T = []
+        self.curr_T = []
+        self.Zeff_T = []
+        self.Ti_T = []
+        self.Te_T = []
+        self.rnec_T = []
+        self.A_vec_T = []
+        self.rho_Al_MP = []
+        self.press_MP = []
+        self.B_field_MP = []
+        self.vel_MP = []
+        self.resist_MP = []
+        self.curr_MP = []
+        self.Zeff_MP = []
+        self.Ti_MP = []
+        self.Te_MP = []
+        self.rnec_MP = []
+        self.A_vec_MP = []
+        self.cell_x_min = 0
+        self.cell_x_max = 0
+        self.cell_y_cen = 0
+        self.cell_x_cen = 0
+        self.adj = adj
+        self.B_mag_MP = []
+        self.B_x_MP = []
+        self.B_y_MP = []
+        self.vel_mag_MP = []
+        self.vel_x_MP = []
+        self.vel_y_MP = []
+        self.curr_mag_MP = []
+        self.curr_x_MP = []
+        self.curr_y_MP = []
+        self.A_vec_mag_MP = []
+        self.A_vec_x_MP = []
+        self.A_vec_y_MP = []
+        self.A_vec_z_MP = []
+        self.v_A_x = []
+        self.v_A_y = []
+        self.C_s = []
+        self.M_A_x = []
+        self.M_A_y = []
+        self.M_s_x = []
+        self.M_s_y = []
+        self.Lund_x = []
+        self.Lund_y = []
+        self.P_th = []
+        self.P_mag = []
+        self.P_ram_x = []
+        self.P_ram_y = []
+        self.P_ram_mag = []
+        self.Beta = []
+        self.Debye = []
+        self.t_A = []
+        self.t_R = []
+        self.RecLength = 0
+        self.A = 0
+        self.width = 0
+        self.TrueLund = 0
+        self.TrueMachAlfven = 0
+        self.TrueV_A = 0
+        self.TrueRes = 0
+        self.y_choice = y_plane
+        self.y_plane = 896
+        self.y_label = 0.5
+        self.x_choice = x_plane
+        self.x_plane = 600
+        self.x_label = 0.5
+        self.x_slice = []
+        self.y_slice = []
+        self.resist_prof = []
+        self.v_A_prof = []
+        self.Lund_prof = []
+        self.v_x_prof = []
+        self.y_in_L = []
+        self.date = date
+        self.T_in = 0
+        self.T_out = 0
+        self.v_in = 0
+        self.v_out = 0
+        self.rho_in = 0
+        self.rho_out = 0
+        self.B_in = 0
+        self.x_A = 0
+        self.rho_Al_xA = 0
+        self.Te_xA = 0
+        self.vel_x_xA = 0 
+        self.B_y_xA = 0
+        self.Z_xA = 0
+        self.Opt = 0
+        self.theta = []
+        self.x_ang = []
+        self.y_ang = []
+        self.l_B = 0
+        
+    def vti_readin(self,filename):
+        """
+        Pass filename of vti file to open
+        Returns:
+        img - numpy array of shape (nx,ny,nz) if scalar or (nx,ny,nz,3) if vector
+        dim - The shape of img
+        """
+ 
+        reader = vtk.vtkXMLImageDataReader()
+        reader.SetFileName(filename)
+        reader.Update()
+     
+        data = reader.GetOutput()
+        dim = data.GetDimensions()
+        vec = [int(i-1) for i in dim]
+ 
+        v = vtk_np.vtk_to_numpy(data.GetCellData().GetArray(0))
+        n_comp = data.GetCellData().GetArray(0).GetNumberOfComponents()
+ 
+        if(n_comp > 1):
+            vec.append(n_comp)
+ 
+        if(n_comp > 2):
+            img = v.reshape(vec,order="F")[0:dim[0]-1,0:dim[1]-1,0:dim[2]-1,:]
+        else:
+            img = v.reshape(vec,order="F")[0:dim[0]-1,0:dim[1]-1,0:dim[2]-1]
+        dim = img.shape
+        return img,dim
+    
+    def LoadData(self):
+        """
+        Loads diagnosed parameters as arrays with their dimensions
+        Including density, pressure, B-field, velocity, resistivity, current
+        """
+        self.rho_Al_T = []
+        self.press_T = []
+        self.B_field_T = []
+        self.vel_T = []
+        self.resist_T = []
+        self.curr_T = []
+        self.Zeff_T = []
+        self.Ti_T = []
+        self.Te_T = []
+        if self.Model == 'WA':
+            val = 'src'
+        else:
+            val = 'RocketModel'
+        if self.Element == 'Al':
+            self.rho_Al,rho_Al_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_rho_Al-'+str(self.t_spec)+'.vti')
+            self.Zeff,Zeff_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_zeff_Al-'+str(self.t_spec)+'.vti')
+        elif self.Element == 'H':
+            self.rho_Al,rho_Al_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_rho_H-'+str(self.t_spec)+'.vti')
+            self.Zeff,Zeff_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_zeff_H-'+str(self.t_spec)+'.vti')
+        self.press,press_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_array_pres-'+str(self.t_spec)+'.vti')
+        self.B_field,B_field_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_Bvec-'+str(self.t_spec)+'.vti')
+        self.vel,vel_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_vvec-'+str(self.t_spec)+'.vti')            
+        self.resist,resist_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_eta-'+str(self.t_spec)+'.vti')
+        self.curr,curr_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_jvec-'+str(self.t_spec)+'.vti')
+        self.Ti,Ti_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_Ti-'+str(self.t_spec)+'.vti')
+        self.Te,Te_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_Te-'+str(self.t_spec)+'.vti')
+        self.rnec,rnec_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_rnec-'+str(self.t_spec)+'.vti')
+        self.A_vec,A_vec_dim = self.vti_readin('MyStuff/'+val+'/xy'+self.index+'/vti/x'+self.index+'_Avec-'+str(self.t_spec)+'.vti')
+        self.cells_x = rho_Al_dim[0]
+        self.cells_x = rho_Al_dim[0]
+        self.cells_y = rho_Al_dim[1]
+        self.cells_z = rho_Al_dim[2]
+        
+        '''
+        if self.cells_x == 1800:
+            self._x_bounds = [-45,45]
+        elif self.cells_x == 1200:
+            self._x_bounds = [-30,30]
+        elif self.cells_x == 1000:
+            self._x_bounds = [-25,25]
+        elif self.cells_x == 200:
+            self._x_bounds = [-5,5]
+        elif self.cells_x == 400:
+            self._x_bounds = [-10,10]
+        elif self.index == 82:
+            self._x_bounds = [-25,25]
+        '''
+            
+        Dx = self.cells_x*0.05
+        x0 = -Dx/2
+        x1 = Dx/2
+        self._x_bounds = [x0,x1]
+        if self.index == 82:
+            self._x_bounds = [-25,25]
+        
+        if (self.y_choice - 0.5) > 0:
+            add = '+ '
+            self.y_label = add + str(np.round(2*(self.y_choice - 0.5)*self._y_bounds[1],1))+' mm from Y - Midplane, Time ' + str(self.t_i)+' ns'
+        elif (self.y_choice - 0.5) == 0:
+            self.y_label = 'Y - Midplane, Time ' + str(self.t_i)+' ns'
+        else:
+            self.y_label = str(np.round(2*(self.y_choice - 0.5)*self._y_bounds[1],1))+' mm from Y - Midplane, Time ' + str(self.t_i)+' ns'
+        
+        if (self.x_choice - 0.5) > 0:
+            add = '+ '
+            self.x_label = add + str(np.round(2*(self.x_choice - 0.5)*self._x_bounds[1],1))+' mm from X - Midplane, Time ' + str(self.t_i)+' ns'
+        elif (self.x_choice - 0.5) == 0:
+            self.x_label = 'X - Midplane, Time ' + str(self.t_i)+' ns'
+        else:
+            self.x_label = str(np.round(2*(self.x_choice - 0.5)*self._x_bounds[1],1))+' mm from X - Midplane, Time ' + str(self.t_i)+' ns'
+
+    def Mag(self,v):
+        v_mag = []
+        v_x = []
+        v_y = []
+        v_z = []
+        for i in range(len(v)):
+            v_t = np.sqrt(v[i][0]**2 + v[i][1]**2 + v[i][2]**2)
+            vx = v[i][0]
+            vy = v[i][1]
+            vz = v[i][2]
+            v_x.append(vx)
+            v_y.append(vy)
+            v_z.append(vz)
+            v_mag.append(v_t)
+        return v_mag,v_x,v_y,v_z
+    
+    def AngularLineout(self,dist):
+        self.LoadData()
+        D_l = (dist-0.025)
+        D_h = (dist+0.025)
+        self.theta = []
+        self.x_ang = []
+        self.y_ang = []
+        theta1 = []
+        x_ang1 = []
+        y_ang1 = []
+        for i in range(self.cells_x):
+            for j in range(self.cells_y):
+                x = 0.05*i
+                if i > self.cells_x/2:
+                    x = 2*self._x_bounds[1] - 0.05*i
+                y = self._y_bounds[0] + 0.05*j
+                r = (x**2 + y**2)**0.5
+                if D_l <= r <= D_h:
+                    if x != 0:
+                        theta = np.arctan(y/x)*180/np.pi
+                        theta1.append(theta)
+                        x_ang1.append(i)
+                        y_ang1.append(j)
+        rho = []
+        for a in range(self.adj,len(theta1)-self.adj):
+            self.theta.append(theta1[a])
+            self.x_ang.append(x_ang1[a])
+            self.y_ang.append(y_ang1[a])
+            
+        for k in range(len(self.theta)):
+            ix = self.x_ang[k]
+            iy = self.y_ang[k]
+            density = self.rho_Al[ix][iy][0]
+            rho.append(density)
+            
+        plt.plot(self.theta,rho,'+')
+        plt.xlabel("Angle")
+        plt.ylabel("Density")
+        plt.show()
+        
+        
+    def ChoosePlane(self):
+        self.LoadData()
+        self.y_plane = int(self.cells_y*self.y_choice)
+        self.x_plane = int(self.cells_x*self.x_choice)
+    
+    def PlaneVals(self):
+        c = self.y_plane
+        self.cell_x_min = int((self._r_array/(self._x_bounds[1]-self._x_bounds[0]))*self.cells_x) + self.adj
+        self.cell_x_max = int(((self._x_bounds[1] -self._x_bounds[0] -self._r_array)/(self._x_bounds[1]-self._x_bounds[0]))*self.cells_x) - self.adj
+        if self.Model == 'PF':
+            self.cell_x_min = int((1/(self._x_bounds[1]-self._x_bounds[0]))*self.cells_x) + self.adj
+            self.cell_x_max = int(((self._x_bounds[1] -self._x_bounds[0] - 1)/(self._x_bounds[1]-self._x_bounds[0]))*self.cells_x) - self.adj
+        
+        a = self.cell_x_min
+        b = self.cell_x_max
+        self.rho_Al_MP = []
+        self.press_MP = []
+        self.B_field_MP = []
+        self.vel_MP = []
+        self.resist_MP = []
+        self.curr_MP = []
+        self.Zeff_MP = []
+        self.Ti_MP = []
+        self.Te_MP = []
+        self.rnec_MP = []
+        self.A_vec_MP = []
+        for i in range(b-a):
+            self.rho_Al_MP.append(self.rho_Al[a+i][c][0])
+            self.press_MP.append(self.press[a+i][c][0])
+            self.B_field_MP.append(self.B_field[a+i][c][0])
+            self.vel_MP.append(self.vel[a+i][c][0])
+            self.resist_MP.append(self.resist[a+i][c][0])
+            self.curr_MP.append(self.curr[a+i][c][0])
+            self.Zeff_MP.append(self.Zeff[a+i][c][0])
+            self.Ti_MP.append(self.Ti[a+i][c][0])
+            self.Te_MP.append(self.Te[a+i][c][0])
+            self.rnec_MP.append(self.rnec[a+i][c][0])
+            self.A_vec_MP.append(self.A_vec[a+i][c][0])
+        self.B_mag_MP,self.B_x_MP,self.B_y_MP,self.B_z_MP = self.Mag(self.B_field_MP)
+        self.vel_mag_MP,self.vel_x_MP,self.vel_y_MP,self.vel_z_MP = self.Mag(self.vel_MP)
+        self.curr_mag_MP,self.curr_x_MP,self.curr_y_MP,self.curr_z_MP = self.Mag(self.curr_MP)
+        self.A_vec_mag_MP,self.A_vec_x_MP,self.A_vec_y_MP,self.A_vec_z_MP = self.Mag(self.A_vec_MP)
+        
+    def PlaneValsX(self):
+        c = self.x_plane
+        #self.cell_y_min = int((self._r_array/(self._y_bounds[1]-self._y_bounds[0]))*self.cells_y) + self.adj
+        #self.cell_y_max = int(((self._y_bounds[1] -self._y_bounds[0] -self._r_array)/(self._y_bounds[1]-self._y_bounds[0]))*self.cells_y) - self.adj
+        self.cell_y_min = 0 + self.adj
+        self.cell_y_max = self.cells_y - self.adj
+        a = self.cell_y_min
+        b = self.cell_y_max
+        self.rho_Al_MP = []
+        self.press_MP = []
+        self.B_field_MP = []
+        self.vel_MP = []
+        self.resist_MP = []
+        self.curr_MP = []
+        self.Zeff_MP = []
+        self.Ti_MP = []
+        self.Te_MP = []
+        self.rnec_MP = []
+        for i in range(b-a):
+            self.rho_Al_MP.append(self.rho_Al[c][a+i][0])
+            self.press_MP.append(self.press[c][a+i][0])
+            self.B_field_MP.append(self.B_field[c][a+i][0])
+            self.vel_MP.append(self.vel[c][a+i][0])
+            self.resist_MP.append(self.resist[c][a+i][0])
+            self.curr_MP.append(self.curr[c][a+i][0])
+            self.Zeff_MP.append(self.Zeff[c][a+i][0])
+            self.Ti_MP.append(self.Ti[c][a+i][0])
+            self.Te_MP.append(self.Te[c][a+i][0])
+            self.rnec_MP.append(self.rnec[c][a+i][0])
+            self.A_vec_MP.append(self.A_vec[c][a+i][0])
+        self.B_mag_MP,self.B_x_MP,self.B_y_MP,self.B_z_MP = self.Mag(self.B_field_MP)
+        self.vel_mag_MP,self.vel_x_MP,self.vel_y_MP,self.vel_z_MP = self.Mag(self.vel_MP)
+        self.curr_mag_MP,self.curr_x_MP,self.curr_y_MP,self.curr_z_MP = self.Mag(self.curr_MP)
+        self.A_vec_mag_MP,self.A_vec_x_MP,self.A_vec_y_MP,self.A_vec_z_MP = self.Mag(self.A_vec_MP)
+    
+    def PlotBase(self):
+        self.ChoosePlane()
+        self.PlaneVals()
+        self.x_vals = np.linspace(self._x_bounds[0],self._x_bounds[1],self.cells_x)
+        self.y_vals = np.linspace(self._y_bounds[0],self._y_bounds[1],self.cells_y)
+        self.x_slice = self.x_vals[self.cell_x_min:self.cell_x_max]
+        InitParams = [self.rho_Al_MP,self.press_MP,self.B_mag_MP,self.vel_mag_MP,self.resist_MP,self.curr_mag_MP]
+        ParamNames = ["Density/$m^{-3}$","Pressure/Pa","Magnetic Field Strength/T","Total velocity/$ms^{-1}$","Resistivity/$\Omega m$","Total Current/A"]
+        for i in range(len(InitParams)):
+            plt.plot(self.x_slice,InitParams[i])
+            plt.ylabel(ParamNames[i])
+            plt.xlabel("x/mm")
+            plt.grid()
+            plt.show()
+            
+    def CalcPlane(self):
+        """
+        v_A_x is the conventional alfven velocity relevant outside the layer (upstream) and so is then
+        M_A_x (and M_s_x, Lund_y) the convention. The opposite components are relevant within the layer
+        where B,v change direction.
+        """
+        self.PlaneVals()
+        self.x_vals = np.linspace(self._x_bounds[0],self._x_bounds[1],self.cells_x)
+        self.y_vals = np.linspace(self._y_bounds[0],self._y_bounds[1],self.cells_y)
+        self.x_slice = self.x_vals[self.cell_x_min:self.cell_x_max]
+        self.v_A_y = []
+        self.v_A_x = []
+        self.C_s = []
+        for i in range(len(self.B_field_MP)):
+                vy = self.B_field_MP[i][0]/np.sqrt((4*np.pi*10**-7)*self.rho_Al_MP[i])
+                self.v_A_y.append(vy)
+                vx = self.B_field_MP[i][1]/np.sqrt((4*np.pi*10**-7)*self.rho_Al_MP[i])
+                self.v_A_x.append(vx)
+                C_s = np.sqrt(3*self.press_MP[i]/(2*self.rho_Al_MP[i]))
+                self.C_s.append(C_s)
+        
+        self.M_A_x = []
+        self.M_A_y = []
+        self.M_s_x = []
+        self.M_s_y = []
+        self.Lund_x = []
+        self.Lund_y = []
+        for i in range(len(self.vel_MP)):
+            M_A_x = np.abs(self.vel_MP[i][0]/self.v_A_x[i])
+            self.M_A_x.append(M_A_x)
+            M_A_y = np.abs(self.vel_MP[i][1]/self.v_A_y[i])
+            self.M_A_y.append(M_A_y)
+            M_s_x = np.abs(self.vel_MP[i][0]/self.C_s[i])
+            self.M_s_x.append(M_s_x)
+            M_s_y = np.abs(self.vel_MP[i][1]/self.C_s[i])
+            self.M_s_y.append(M_s_y)
+            Lund_y = np.abs(self.v_A_y[i]*(44.8*2/1000)*(4*np.pi*10**-7)/self.resist_MP[i])
+            Lund_x = np.abs(self.v_A_x[i]*(44.8*2/1000)*(4*np.pi*10**-7)/self.resist_MP[i])
+            self.Lund_x.append(Lund_x)
+            self.Lund_y.append(Lund_y)
+        
+        m_Al = 27*1.67*10**-27
+        e = 1.6*10**-19
+        k_B = 1.38*10**-23
+        mu_0 = 4*np.pi*10**-7
+        eps_0 = 8.85*10**-12
+        self.P_th = []
+        self.P_mag = []
+        self.P_ram_x = []
+        self.P_ram_y = []
+        self.P_ram_mag = []
+        self.Beta = []
+        self.Debye = []
+        
+        for i in range(len(self.vel_MP)):
+            P_th = (3/2)*self.Zeff_MP[i]*self.rho_Al_MP[i]*(e)*self.Ti_MP[i]/m_Al
+            P_mag = (self.B_mag_MP[i]**2)/(2*mu_0)
+            Beta = P_th/P_mag
+            #P_ram = self.press_MP[i] - P_mag - P_th
+            P_ram_x = 0.5*self.rho_Al_MP[i]*self.vel_x_MP[i]**2
+            P_ram_y = 0.5*self.rho_Al_MP[i]*self.vel_y_MP[i]**2
+            P_ram_mag = 0.5*self.rho_Al_MP[i]*self.vel_mag_MP[i]**2
+            Debye = (eps_0*self.Te_MP[i]/(e*self.Zeff_MP[i]*self.rnec_MP[i]))**0.5
+            self.P_th.append(P_th)
+            self.P_mag.append(P_mag)
+            self.Beta.append(Beta)
+            self.P_ram_x.append(P_ram_x)
+            self.P_ram_y.append(P_ram_y)
+            self.P_ram_mag.append(P_ram_mag)
+            self.Debye.append(Debye)
+            
+        self.t_A = []
+        self.t_R = []
+        L = self._x_bounds[1]/1000
+        for i in range(len(self.Debye)):
+            t_A = L/self.v_A_x[i]
+            t_R = mu_0*L**2/self.resist_MP[i]
+            self.t_A.append(t_A)
+            self.t_R.append(t_R)
+            
+    def CalcPlaneX(self):
+        self.PlaneValsX()
+        self.x_vals = np.linspace(self._x_bounds[0],self._x_bounds[1],self.cells_x)
+        self.y_vals = np.linspace(self._y_bounds[0],self._y_bounds[1],self.cells_y)
+        self.y_slice = self.y_vals[self.cell_y_min:self.cell_y_max]
+        self.v_A_y = []
+        self.v_A_x = []
+        self.C_s = []
+        for i in range(len(self.B_field_MP)):
+                vy = self.B_field_MP[i][0]/np.sqrt((4*np.pi*10**-7)*self.rho_Al_MP[i])
+                self.v_A_y.append(vy)
+                vx = self.B_field_MP[i][1]/np.sqrt((4*np.pi*10**-7)*self.rho_Al_MP[i])
+                self.v_A_x.append(vx)
+                C_s = np.sqrt(3*self.press_MP[i]/(2*self.rho_Al_MP[i]))
+                self.C_s.append(C_s)
+        
+        self.M_A_x = []
+        self.M_A_y = []
+        self.M_s_x = []
+        self.M_s_y = []
+        self.Lund_x = []
+        self.Lund_y = []
+        
+        for i in range(len(self.vel_MP)):
+            M_A_x = np.abs(self.vel_MP[i][0]/self.v_A_x[i])
+            self.M_A_x.append(M_A_x)
+            M_A_y = np.abs(self.vel_MP[i][1]/self.v_A_y[i])
+            self.M_A_y.append(M_A_y)
+            M_s_x = np.abs(self.vel_MP[i][0]/self.C_s[i])
+            self.M_s_x.append(M_s_x)
+            M_s_y = np.abs(self.vel_MP[i][1]/self.C_s[i])
+            self.M_s_y.append(M_s_y)
+            Lund_y = np.abs(self.v_A_y[i]*(44.8*2/1000)*(4*np.pi*10**-7)/self.resist_MP[i])
+            Lund_x = np.abs(self.v_A_x[i]*(44.8*2/1000)*(4*np.pi*10**-7)/self.resist_MP[i])
+            self.Lund_x.append(Lund_x)
+            self.Lund_y.append(Lund_y)
+        
+        m_Al = 27*1.67*10**-27
+        e = 1.6*10**-19
+        k_B = 1.38*10**-23
+        mu_0 = 4*np.pi*10**-7
+        eps_0 = 8.85*10**-12
+        self.P_th = []
+        self.P_mag = []
+        self.P_ram_x = []
+        self.P_ram_y = []
+        self.P_ram_mag = []
+        self.Beta = []
+        self.Debye = []
+        
+        for i in range(len(self.vel_MP)):
+            P_th = (3/2)*self.Zeff_MP[i]*self.rho_Al_MP[i]*(e)*self.Ti_MP[i]/m_Al
+            P_mag = (self.B_mag_MP[i]**2)/(2*mu_0)
+            Beta = P_th/P_mag
+            #P_ram = self.press_MP[i] - P_mag - P_th
+            P_ram_x = 0.5*self.rho_Al_MP[i]*self.vel_x_MP[i]**2
+            P_ram_y = 0.5*self.rho_Al_MP[i]*self.vel_y_MP[i]**2
+            P_ram_mag = 0.5*self.rho_Al_MP[i]*self.vel_mag_MP[i]**2
+            Debye = (eps_0*self.Te_MP[i]/(e*self.Zeff_MP[i]*self.rnec_MP[i]))**0.5
+            self.P_th.append(P_th)
+            self.P_mag.append(P_mag)
+            self.Beta.append(Beta)
+            self.P_ram_x.append(P_ram_x)
+            self.P_ram_y.append(P_ram_y)
+            self.P_ram_mag.append(P_ram_mag)
+            self.Debye.append(Debye)
+                    
+        self.t_A = []
+        self.t_R = []
+        L = self._x_bounds[1]/1000
+        for i in range(len(self.Debye)):
+            t_A = L/self.v_A_x[i]
+            t_R = mu_0*L**2/self.resist_MP[i]
+            self.t_A.append(t_A)
+            self.t_R.append(t_R)
+            
+    def PlotPlane(self,val='Lundquist',Dir='x'):
+        self.ChoosePlane()
+        if self.target == 'y':
+            self.CalcPlane()
+            coord = self.x_slice
+            coordlabel = self.y_label
+            crd = 'x'
+        elif self.target == 'x':
+            self.CalcPlaneX()
+            coord = self.y_slice
+            coordlabel = self.x_label
+            crd = 'y'
+        mom_x = []
+        mom_y = []
+        mom_mag = []
+        for i in range(len(self.rho_Al_MP)):
+            mom_x_v = self.rho_Al_MP[i]*self.vel_x_MP[i]
+            mom_y_v = self.rho_Al_MP[i]*self.vel_y_MP[i]
+            mom_mag_v = self.rho_Al_MP[i]*self.vel_mag_MP[i]
+            mom_x.append(mom_x_v)
+            mom_y.append(mom_y_v)
+            mom_mag.append(mom_mag_v)
+            
+        if val == 'Base Parameters':
+            var = [np.log10(self.rho_Al_MP),np.log10(self.Te_MP),np.log10(self.vel_mag_MP)]
+            var_labs = ['Log$_{10}$(Density)','Log$_{10}$(Electron Temperature)','Log$_{10}$(Velocity)']
+            for i in range(len(var)):
+                plt.plot(coord,var[i],label=var_labs[i])
+            plt.xlabel(self.target+"/mm")
+            plt.legend()
+            plt.grid()
+            plt.title(self.title)
+            plt.savefig('MyStuff/Plots/'+self.date+'/BaseParameters.png')
+            plt.show()
+        else:
+            if val=='Alfven':
+                if Dir == 'x':
+                    var = self.v_A_x
+                elif Dir == 'y':
+                    var = self.v_A_y
+            elif val == 'Alfven Mach':
+                if Dir == 'x':
+                    var = self.M_A_x
+                elif Dir == 'y':
+                    var = self.M_A_y
+            elif val == 'Sonic Mach':
+                if Dir == 'x':
+                    var = self.M_s_x
+                elif Dir == 'y':
+                    var = self.M_s_y
+            elif val == 'Lundquist':
+                if Dir == 'x':
+                    var = self.Lund_x
+                elif Dir == 'y':
+                    var = self.Lund_y
+            elif val == 'Beta':
+                var = self.Beta
+            elif val == 'Ram Pressure':
+                if Dir =='x':
+                    var = self.P_ram_x
+                elif Dir =='y':
+                    var = self.P_ram_y
+                elif Dir =='mag':
+                    var = self.P_ram_mag
+            elif val == 'Magnetic Pressure':
+                var = self.P_mag
+            elif val == 'Thermal Pressure':
+                var = self.P_th
+            elif val == 'Density':
+                var = self.rho_Al_MP
+            elif val == 'Pressure':
+                var = self.press_MP
+            elif val == 'B field':
+                if Dir == 'x':
+                    var = self.B_x_MP
+                elif Dir == 'y':
+                    var = self.B_y_MP
+                elif Dir == 'z':
+                    var = self.B_z_MP
+                elif Dir == 'mag':
+                    var = self.B_mag_MP
+            elif val == 'Current':
+                if Dir == 'x':
+                    var = self.curr_x_MP
+                elif Dir == 'y':
+                    var = self.curr_y_MP
+                elif Dir == 'z':
+                    var = self.curr_z_MP
+                elif Dir == 'mag':
+                    var = self.curr_mag_MP
+            elif val == 'Ion Temperature':
+                var = self.Ti_MP
+            elif val == 'Electron Temperature':
+                var = self.Te_MP
+            elif val == 'Resistivity':
+                var = self.resist_MP
+            elif val == 'Velocity':
+                if Dir == 'x':
+                    var = self.vel_x_MP
+                elif Dir == 'y':
+                    var = self.vel_y_MP
+                elif Dir == 'z':
+                    var = self.vel_z_MP
+                elif Dir == 'mag':
+                    var = self.vel_mag_MP
+            elif val == 'Momentum':
+                if Dir == 'x':
+                    var = mom_x
+                elif Dir == 'y':
+                    var = mom_y
+                elif Dir == 'mag':
+                    var = mom_mag
+            elif val == 'Number Density':
+                var = self.rnec_MP
+            elif val == 'Debye Length':
+                var = self.Debye
+            elif val == "Alfven Timescale":
+                var = self.t_A
+            elif val == "Resistive Timescale":
+                var = self.t_R
+            elif val == "Vector Potential":
+                var = self.A_vec_mag_MP
+            elif val == "Effective Charge":
+                var = self.Zeff_MP
+                    
+            plt.plot(coord,var,label=coordlabel)
+            plt.ylabel(val,fontsize = 14)
+            plt.xlabel(crd+"/mm", fontsize = 14)
+            #plt.ylim(0.001665,0.0016652)
+            plt.title(self.title)
+            plt.legend(fontsize=12)
+            plt.grid()
+            plt.rcParams["figure.figsize"] = (14,6)
+            plt.tight_layout()
+            plt.savefig('MyStuff/Plots/'+self.date+'/'+val+self.index+self.target+'_'+str(self.t_i)+'.png')
+            plt.show()
+        
+    def Gaussian(self,x,A,mu,sig):
+        y = A*np.exp(-((x-mu)**2)/(2*sig**2))
+        return y
+    
+    def Harris(self,x,delta,A):
+        y = A*(1/np.cosh(x/delta)**2)/delta
+        return y
+        
+    def FindLundquist(self,Opt):
+        self.ChoosePlane()
+        dist_x_cell = (self._x_bounds[1] - self._x_bounds[0])/self.cells_x
+        self.y_vals = np.linspace(self._y_bounds[0],self._y_bounds[1],self.cells_y)
+        cell_x_cen = self.cells_x/2
+        N_cell_in_1 = int(1/dist_x_cell) # 1mm divided by length of cell
+        cell_x_min = int(cell_x_cen - N_cell_in_1)
+        cell_x_max = int(cell_x_cen + N_cell_in_1) + 1
+        N_cells = cell_x_max - cell_x_min + 1
+        j_z = []
+        for j in range(self.cells_y):
+            j_z_vals = []
+            for i in range(N_cells):
+                j_z_val = self.curr[cell_x_min+i,j,0,2]
+                j_z_vals.append(j_z_val)
+            j_z_avg = np.mean(j_z_vals)
+            j_z.append(j_z_avg)
+        
+        if self.Model == 'PF':
+            self.RecLength = self._y_bounds[1]
+        else:
+            guess = [4e10,0.1,18]
+            po, po_cov = sp.optimize.curve_fit(self.Gaussian,self.y_vals,j_z,p0=guess)
+        
+            FWHM = 2*np.sqrt(2*np.log(2))*po[2]
+            self.RecLength = FWHM/2
+        
+        #self.RecLength = 35/2
+        
+        self.x_vals = np.linspace(self._x_bounds[0],self._x_bounds[1],self.cells_x)
+        cell_y_cen = int(self.cells_y/2)
+        dist_y_cell = (self._y_bounds[1] - self._y_bounds[0])/self.cells_y
+        N_cell_in_L = self.RecLength/dist_y_cell - 1
+        cell_y_min = int(cell_y_cen - N_cell_in_L)
+        cell_y_max = int(cell_y_cen + N_cell_in_L)
+        self.y_vals = np.linspace(self._y_bounds[0],self._y_bounds[1],self.cells_y)
+        y_Lund = self.y_vals[cell_y_min:cell_y_max]
+        N_cells_y = cell_y_max - cell_y_min
+        self.y_in_L = self.y_vals[cell_y_min:cell_y_max]
+        j_z_y = []
+        for j in range(self.cells_x):
+            j_z_y1 = []
+            for i in range(N_cells_y):
+                j_z_y2 = self.curr[j,cell_y_min+i,0,2]
+                j_z_y1.append(j_z_y2)
+            j_z_avg_y = np.mean(j_z_y1)
+            j_z_y.append(j_z_avg_y)
+        
+        guess1 = [0.2,5e10]
+        po1, po_cov1 = sp.optimize.curve_fit(self.Harris,self.x_vals,j_z_y,p0=guess1)
+        
+        self.A = po1[1]
+        self.width = np.abs(po1[0])
+        #self.width = 0.6/2
+        
+        cell_x_width = int(self.width/dist_x_cell)
+        
+        self.Opt = Opt
+        
+        if self.Opt == True:
+            cell_x_plus = int(cell_x_cen + cell_x_width)
+            cell_x_plus2 = int(cell_x_cen + 2*cell_x_width)
+            cell_x_sub = int(cell_x_cen - cell_x_width)
+            cell_x_sub2 = int(cell_x_cen - 2*cell_x_width)
+        elif self.Opt == False:
+            cell_x_plus = int(cell_x_cen + 0.1*N_cell_in_1)
+            cell_x_plus2 = int(cell_x_cen + 0.2*N_cell_in_1)
+            cell_x_sub = int(cell_x_cen - 0.1*N_cell_in_1)
+            cell_x_sub2 = int(cell_x_cen - 0.2*N_cell_in_1)
+        
+        self.resist_prof = []
+        self.v_A_prof = []
+        self.Lund_prof = []
+        self.v_x_prof = []
+        Temp_arr = []
+        v_in_arr = []
+        v_out_arr = []
+        rho_in_arr = []
+        rho_out_arr = []
+        B_in_arr = []
+        Temp_edge_arr = []
+        
+        for i in range(cell_y_min,cell_y_max):
+            res = []
+            B_y = np.abs(self.B_field[cell_x_plus2,i,0,1])
+            rho = self.rho_Al[cell_x_plus2,i,0]
+            v_x = np.abs(self.vel[cell_x_plus2,i,0,0])
+            B_y2 = np.abs(self.B_field[cell_x_sub2,i,0,1])
+            rho2 = self.rho_Al[cell_x_sub2,i,0]
+            v_x2 = np.abs(self.vel[cell_x_sub2,i,0,0])
+            T_edge = self.Te[cell_x_plus2,i,0]
+            T_edge2 = self.Te[cell_x_sub2,i,0]
+            mu_0 = 4*np.pi*(10**-7)
+            #v_A = B_y/np.sqrt(mu_0*rho)
+            #v_A2 = B_y2/np.sqrt(mu_0*rho2)
+            #v_A = np.mean([v_A,v_A2])
+            v_x = np.mean([v_x,v_x2])
+            rho = np.mean([rho,rho2])
+            B_y = np.mean([B_y,B_y2])
+            T_mean = np.mean([T_edge,T_edge2])
+            T_cen_vals = []
+            rho_cen_vals = []
+            for j in range(cell_x_sub,cell_x_plus+1):
+                res.append(self.resist[j,i,0])
+                T_cen_vals.append(self.Te[j,i,0])
+                rho_cen_vals.append(self.rho_Al[j,i,0])
+            resist = np.mean(res)
+            Temp_arr.append(np.mean(T_cen_vals))
+            #resist = np.mean(self.resist[cell_x_sub:cell_x_plus,i,0])
+            rho_in = np.mean(rho_cen_vals)
+            #v_A = B_y/np.sqrt(mu_0*rho_in)
+            #v_A2 = B_y2/np.sqrt(mu_0*rho_in)
+            v_A = B_y/np.sqrt(mu_0*rho)
+            v_A2 = B_y2/np.sqrt(mu_0*rho)
+            v_A = np.mean([v_A,v_A2])
+            Lund = v_A*(self.RecLength/1000)*(mu_0)/resist
+            Lund2 = v_A2*(self.RecLength/1000)*(mu_0)/resist
+            Lund = np.mean([Lund,Lund2])
+            self.resist_prof.append(resist)
+            self.v_A_prof.append(v_A)
+            self.Lund_prof.append(Lund)
+            self.v_x_prof.append(v_x)
+            #rho_in = self.rho_Al[int(cell_x_cen),i,0]
+            
+            Temp_edge_arr.append(T_mean)
+            rho_in_arr.append(rho_in)
+            rho_out_arr.append(rho)
+            B_in_arr.append(B_y)
+        
+        for i in range(cell_x_sub,cell_x_plus):
+            v_y = np.abs(self.vel[i,cell_y_max,0,1])
+            v_y2 = np.abs(self.vel[i,cell_y_min,0,1])
+            v_y = np.mean([v_y,v_y2])
+            v_out_arr.append(v_y)
+            
+        self.TrueMachAlfven = np.abs(np.mean(self.v_x_prof)/np.mean(self.v_A_prof))
+        self.TrueV_A = np.mean(self.v_A_prof)
+        self.TrueRes = np.mean(self.resist_prof)
+        self.TrueLund = np.mean(self.Lund_prof)
+        #self.TrueLund = np.abs(self.TrueV_A*(2*self.RecLength/1000)*(mu_0/self.TrueRes))
+        
+        self.T_in = np.mean(Temp_arr)
+        self.T_out = np.mean(Temp_edge_arr)
+        self.v_in = np.mean(self.v_x_prof)
+        self.v_out = np.mean(v_out_arr)
+        self.rho_in = np.mean(rho_in_arr)
+        self.rho_out = np.mean(rho_out_arr)
+        self.B_in = np.mean(B_in_arr)
+        
+        
+        '''
+        plt.plot(y_Lund,self.Lund_prof)
+        plt.xlabel("y/mm")
+        plt.ylabel("Lundquist Number")
+        plt.grid()
+        plt.savefig('MyStuff/Plots/'+self.date+'/Lund_Prof'+self.index+self.target+'_'+str(self.t_i)+'.png')
+        plt.show()
+        
+        plt.plot(self.y_vals,j_z,'+')
+        j_z_gauss = self.Gaussian(self.y_vals,po[0],po[1],po[2])
+        plt.plot(self.y_vals,j_z_gauss,label='Gaussian Fit')
+        plt.xlabel("y/mm")
+        plt.ylabel("Current/A")
+        plt.grid()
+        plt.legend()
+        plt.savefig('MyStuff/Plots/'+self.date+'/j_z_avg'+self.index+self.target+'_'+str(self.t_i)+'.png')
+        plt.show()
+        
+        a = 400
+        b = 600
+        plt.plot(self.x_vals[a:b],j_z_y[a:b],'+')
+        j_z_harris = self.Harris(self.x_vals,po1[0],po1[1])
+        plt.plot(self.x_vals[a:b],j_z_harris[a:b])
+        plt.xlabel("x/mm")
+        plt.ylabel("Current/A")
+        plt.grid()
+        plt.savefig('MyStuff/Plots/'+self.date+'/Harris_Sheet'+self.index+self.target+'_'+str(self.t_i)+'.png')
+        plt.show()
+        '''
+            
+    def TraceLundquist(self,Opt):
+        self.Opt = Opt
+        self.time = np.arange(self.t_i,self.t_f+10,10)
+        Lundquist = []
+        MachAlfven = []
+        Widths = []
+        Lengths = []
+        Vel = []
+        Res = []
+        Ratio = []
+        for i in range(len(self.time)):
+            self.t_spec = self.time[i]
+            self.FindLundquist(self.Opt)
+            Lengths.append(2*self.RecLength)
+            Widths.append(2*self.width)
+            Lundquist.append(self.TrueLund)
+            MachAlfven.append(self.TrueMachAlfven)
+            Vel.append(self.TrueV_A)
+            Res.append(self.TrueRes)
+            Ratio.append(self.RecLength/self.width)
+        """    
+        fig,ax1 = plt.subplots()
+        ax2 = ax1.twinx()
+        
+        ax1.plot(self.time,Lundquist,'+',label='Lundquist Number',color='orange')
+        ax2.plot(self.time,MachAlfven,'+',label='Alfven Mach Number',color='blue')
+        plt.grid()
+        plt.xlabel("Time/ns")
+        ax1.set_ylabel("Lundquist Number")
+        ax2.set_ylabel("Alfven Mach Number")
+        ax1.legend()
+        ax2.legend()
+        plt.tight_layout()
+        plt.title(self.title)
+        plt.savefig('MyStuff/Plots/'+self.date+'/LundMach'+str(self.index)+''.png')
+        plt.show()
+        """ 
+        plt.plot(self.time,Lundquist,'+',label=self.y_label)
+        plt.grid()
+        plt.xlabel("Time/ns")
+        plt.ylabel("Lundquist Number")
+        #plt.ylim(0,600)
+        #plt.legend()
+        plt.title(self.title)
+        plt.savefig('MyStuff/Plots/'+self.date+'/Lundquist_x'+str(self.index)+'.png')
+        plt.show()
+        
+        plt.plot(self.time,Widths,'+',label=self.y_label)
+        plt.grid()
+        plt.xlabel("Time/ns")
+        plt.ylabel("Reconnection Layer Width")
+        #plt.legend()
+        plt.title(self.title)
+        plt.savefig('MyStuff/Plots/'+self.date+'/Widths'+str(self.index)+'.png')
+        plt.show()
+        
+        plt.plot(self.time,Lengths,'+',label=self.y_label)
+        plt.grid()
+        plt.xlabel("Time/ns")
+        plt.ylabel("Reconnection Layer Length")
+        #plt.legend()
+        plt.title(self.title)
+        plt.savefig('MyStuff/Plots/'+self.date+'/Lengths'+str(self.index)+'.png')
+        plt.show()
+        
+        plt.plot(self.time,Vel,'+',label=self.y_label)
+        plt.grid()
+        plt.xlabel("Time/ns")
+        plt.ylabel("Alfven Velocity")
+        #plt.legend()
+        plt.title(self.title)
+        plt.savefig('MyStuff/Plots/'+self.date+'/Alfven'+str(self.index)+'.png')
+        plt.show()
+        
+        plt.plot(self.time,Res,'+',label=self.y_label)
+        plt.grid()
+        plt.xlabel("Time/ns")
+        plt.ylabel("Averaged Resistivity")
+        #plt.legend()
+        plt.title(self.title)
+        plt.savefig('MyStuff/Plots/'+self.date+'/Resistivity'+str(self.index)+'.png')
+        plt.show()
+        
+        plt.plot(self.time,Ratio,'+',label=self.y_label)
+        plt.grid()
+        plt.xlabel("Time/ns")
+        plt.ylabel("Aspect Ratio")
+        #plt.legend()
+        plt.title(self.title)
+        plt.savefig('MyStuff/Plots/'+self.date+'/Ratio'+str(self.index)+'.png')
+        plt.show()
+        
+    def TracePlane(self,val='Lundquist',Dir='x'):
+        self.time = np.arange(self.t_i,self.t_f+10,10)
+        Centre_vals = []
+        for i in range(len(self.time)):
+            self.t_spec = self.time[i]
+            self.ChoosePlane()
+            self.CalcPlaneX()
+            if val=='Alfven':
+                if Dir == 'x':
+                    var = self.v_A_x
+                elif Dir == 'y':
+                    var = self.v_A_y
+            elif val == 'Alfven Mach':
+                if Dir == 'x':
+                    var = self.M_A_x
+                elif Dir == 'y':
+                    var = self.M_A_y
+            elif val == 'Sonic Mach':
+                if Dir == 'x':
+                    var = self.M_s_x
+                elif Dir == 'y':
+                    var = self.M_s_y
+            elif val == 'Lundquist':
+                if Dir == 'x':
+                    var = self.Lund_x
+                elif Dir == 'y':
+                    var = self.Lund_y
+            elif val == 'Beta':
+                var = self.Beta
+            elif val == 'Ram Pressure':
+                if Dir =='x':
+                    var = self.P_ram_x
+                elif Dir =='y':
+                    var = self.P_ram_y
+                elif Dir =='mag':
+                    var = self.P_ram_mag
+            elif val == 'Magnetic Pressure':
+                var = self.P_mag
+            elif val == 'Thermal Pressure':
+                var = self.P_th
+            elif val == 'Density':
+                var = self.rho_Al_MP
+            elif val == 'Pressure':
+                var = self.press_MP
+            elif val == 'B field':
+                if Dir == 'x':
+                    var = self.B_x_MP
+                elif Dir == 'y':
+                    var = self.B_y_MP
+                elif Dir == 'z':
+                    var = self.B_z_MP
+                elif Dir == 'mag':
+                    var = self.B_mag_MP
+            elif val == 'Current':
+                if Dir == 'x':
+                    var = self.curr_x_MP
+                elif Dir == 'y':
+                    var = self.curr_y_MP
+                elif Dir == 'z':
+                    var = self.curr_z_MP
+                elif Dir == 'mag':
+                    var = self.curr_mag_MP
+            elif val == 'Ion Temperature':
+                var = self.Ti_MP
+            elif val == 'Electron Temperature':
+                var = self.Te_MP
+            elif val == 'Resistivity':
+                var = self.resist_MP
+            elif val == 'Velocity':
+                if Dir == 'x':
+                    var = self.vel_x_MP
+                elif Dir == 'y':
+                    var = self.vel_y_MP
+                elif Dir == 'z':
+                    var = self.vel_z_MP
+                elif Dir == 'mag':
+                    var = self.vel_mag_MP
+            elif val == "Number Density":
+                var = self.rnec_MP
+            elif val == "Debye Length":
+                var = self.Debye
+            elif val == "Alfven Timescale":
+                var = self.t_A
+            elif val == "Resistive Timescale":
+                var = self.t_R
+            elif val == "Vector Potential":
+                var = self.A_vec_mag_MP
+            elif val == "Effective Charge":
+                var = self.Zeff_MP
+            #x_cen = int(len(self.x_slice)/2)
+            var_spec = np.mean(var)
+            Centre_vals.append(var_spec)
+            
+        plt.plot(self.time,Centre_vals,'+',label=self.x_label)
+        plt.xlabel("Time/ns")
+        plt.ylabel(val)
+        plt.legend()
+        plt.grid()
+        plt.title(self.title)
+        plt.savefig('MyStuff/Plots/'+self.date+'/'+val+Dir+str(self.index)+'_'+str(self.t_i)+'-'+str(self.t_f)+'.png')
+        plt.show()
+        
+    def ParameterProfilesTraced(self):
+        self.time = np.arange(self.t_i,self.t_f+50,50)
+        Rho = []
+        V_x = []
+        B_y = []
+        T_e = []
+        for i in range(len(self.time)):
+            self.t_spec = self.time[i]
+            self.ChoosePlane()
+            self.CalcPlane()
+            Rho.append(self.rho_Al_MP)
+            V_x.append(self.vel_x_MP)
+            B_y.append(self.B_y_MP)
+            T_e.append(self.Te_MP)
+        All = [Rho,V_x,B_y,T_e]
+        Time_labels = []
+        for i in range(len(self.time)):
+            t = str(self.time[i]) + " ns"
+            Time_labels.append(t)
+        y_names = ["Density/kg$m^{-3}$","$v_{x}$/$ms^{-1}$","$B_{y}$/T","$T_{e}$/eV"]
+        for j in range(len(All)):
+            plt.subplot(2,2,j+1)
+            for i in range(len(Rho)):
+                if j == 0 or j == 3:
+                    plt.yscale("log")
+                plt.plot(self.x_slice,All[j][i],label=Time_labels[i])
+            if j != 3:
+                plt.xticks(visible=False)
+            if j == 3 or j == 2:
+                plt.xlabel("x/mm")
+            plt.ylabel(y_names[j])
+        plt.legend()
+        plt.suptitle(self.title)
+        plt.grid()
+        plt.tight_layout()
+        plt.savefig('MyStuff/Plots/'+self.date+'/All'+str(self.index)+'.png')
+        plt.show()
+    
+    """
+    def LundProfile(self):
+        self.ChoosePlane()
+        y_vals = np.linspace(self._y_bounds[0],self._y_bounds[1],21)
+        self.widths = []
+        dist_x_cell = (self._x_bounds[1] - self._x_bounds[0])/self.cells_x
+        self.y_vals = np.linspace(self._y_bounds[0],self._y_bounds[1],self.cells_y)
+        cell_x_cen = self.cells_x/2
+        N_cell_in_1 = 1/dist_x_cell # 1mm divided by length of cell
+        cell_x_min = int(cell_x_cen - N_cell_in_1)
+        cell_x_max = int(cell_x_cen + N_cell_in_1) + 1
+        N_cells = cell_x_max - cell_x_min + 1
+        j_z = []
+        for j in range(self.cells_y):
+            j_z_vals = []
+            for i in range(N_cells):
+                j_z_val = self.curr[cell_x_min+i,j,0,2]
+                j_z_vals.append(j_z_val)
+            j_z_avg = np.mean(j_z_vals)
+            j_z.append(j_z_avg)
+        
+        guess = [4e10,0.1,18]
+        po, po_cov = sp.optimize.curve_fit(self.Gaussian,self.y_vals,j_z,p0=guess)
+        
+        FWHM = 2*np.sqrt(2*np.log(2))*po[2]
+        self.RecLength = FWHM/2
+        Lundquist = []
+        M_A = []
+        cell_y_cen = int(self.cells_y/2)
+        dist_y_cell = (self._y_bounds[1] - self._y_bounds[0])/self.cells_y
+        j_z_y = []
+        self.cell_x_min = int((self._r_array/(self._x_bounds[1]-self._x_bounds[0]))*self.cells_x) + self.adj
+        self.cell_x_max = int(((self._x_bounds[1] -self._x_bounds[0] -self._r_array)/(self._x_bounds[1]-self._x_bounds[0]))*self.cells_x) - self.adj
+        self.x_vals = np.linspace(self._x_bounds[0],self._x_bounds[1],self.cells_x)
+        self.x_slice = self.x_vals[self.cell_x_min:self.cell_x_max]
+        
+        for i in range(40,61):
+            self.y_choice = i/100
+            self.y_plane = int(self.cells_y*self.y_choice)
+            self.PlaneVals()
+            guess1 = [1,5e10]
+            po1, po_cov1 = sp.optimize.curve_fit(self.Harris,self.x_slice,self.curr_z_MP,p0=guess1)
+            width = po1[0]
+            self.widths.append(width)
+            
+            cell_x_width = int(self.width/dist_x_cell)
+            cell_x_plus = int(cell_x_cen + cell_x_width)
+            cell_x_plus2 = int(cell_x_cen + 2*cell_x_width)
+            cell_x_sub = int(cell_x_cen - cell_x_width)
+        
+            B_y = self.B_field[cell_x_plus2,self.y_plane,0,1]
+            rho = self.rho_Al[cell_x_plus2,self.y_plane,0]
+            v_x = self.vel[cell_x_plus2,self.y_plane,0,0]
+            mu_0 = 4*np.pi*10**-7
+            v_A = B_y/np.sqrt(mu_0*rho)
+        
+            MachAlfven = np.abs(v_x/v_A)
+
+            resist = np.mean(self.resist[cell_x_sub:cell_x_plus,self.y_plane,0])
+            Lund = np.abs(v_A*(2*self.RecLength/1000)*(mu_0)/resist)
+            Lundquist.append(Lund)
+            M_A.append(MachAlfven)
+        plt.plot(y_vals,Lundquist,"+")
+        plt.xlabel("y/mm")
+        plt.ylabel("Lundquist Number")
+        plt.show()
+    """
+    def LundProfile(self):
+        self.ChoosePlane()
+        self.FindLundquist(True)
+        plt.plot(self.y_in_L,self.Lund_prof,'+')
+        plt.xlabel("y/mm")
+        plt.ylabel("Lundquist Number")
+        plt.grid()
+        #plt.ylim(0,500)
+        plt.show()
+        
+        plt.plot(self.y_in_L,self.v_A_prof,'+')
+        plt.xlabel("y/mm")
+        plt.ylabel("Alfven Velocity")
+        plt.grid()
+        #plt.ylim(0,500)
+        plt.show()
+        
+        plt.plot(self.y_in_L,self.v_x_prof,'+')
+        plt.xlabel("y/mm")
+        plt.ylabel("Velocity-x")
+        plt.grid()
+        #plt.ylim(0,500)
+        plt.show()
+        
+    def ReturnValues(self):
+        self.FindLundquist(True)
+        A = self.rho_out/self.rho_in
+        width_SP = (((self.RecLength/1000)*self.TrueRes/((4*np.pi*10**-7)*self.TrueV_A))**0.5)*1000
+        width_SP_2 = (self.TrueRes/self.v_in)*1000/(4*np.pi*10**-7)
+        width_comp = width_SP*(A**(-0.5))
+        width_comp_2 = width_SP_2*(A**(-0.5))
+        width_inner = (self.TrueLund**(-1/8))*width_comp
+        width_inner_2 = (self.TrueLund**(-1/8))*width_comp_2
+        N_plasmoids = self.TrueLund**(3/8)
+        
+        Rate_M = self.v_in/self.TrueV_A
+        Rate_T = self.TrueLund**(-0.5)
+        
+        Res_Length = self.TrueRes/((4*np.pi*10**-7)*(self.v_in))
+        
+        print("Layer Length: ",self.RecLength*2," mm")
+        print("Layer Width: ", self.width*2," mm")
+        print("Aspect Ratio: ", self.RecLength/self.width)
+        print("Layer Temperature: ",self.T_in," eV")
+        print("Lundquist: ",self.TrueLund)
+        print("Compression Ratio: ",A)
+        print("Inflow Velocity: ",self.v_in/1000," km/s")
+        print("Outflow Velocity: ",self.v_out/1000," km/s")
+        print("Inflow Magnetic Field: ",self.B_in," T")
+        print("Inflow Alfven Velocity: ",self.TrueV_A/1000, " km/s")
+        print("Reconnection Rate: ",self.v_in/self.v_out)
+        print("Edge Layer Temperature: ",self.T_out," eV")
+        print("Resistivity: ",self.TrueRes," Ohm m")
+        print("Sweet-Parker Width: ",2*width_SP," or ",2*width_SP_2," mm")
+        print("Compressed Sweet-Parker Width: ",2*width_comp," or ",2*width_comp_2," mm")
+        print("Inner Width: ",2*width_inner," or ",2*width_inner_2," mm")
+        print("Number of Plasmoids: ",N_plasmoids)
+        
+        print("Measured Rate: ",Rate_M)
+        print("Theoretical Rate: ",Rate_T)
+        print("Resistive Length: ",Res_Length*10**6," microns")
+    
+    
+    def AlfvenicPoint(self):
+        self.ChoosePlane()
+        #self.y_choice = 0.5
+        self.CalcPlane()
+        for i in range(len(self.vel_x_MP)):
+            if np.abs(self.v_A_x[i]) <= np.abs(self.vel_x_MP[i]):
+                j = i
+                self.x_A = self.x_slice[j]
+                #break
+        return self.x_A
+    
+    def Sine(self,t,T,p,A,C):
+        y = A*np.sin(2*np.pi*t/T+p) + C
+        return y
+    
+    def ParametersAlfven(self):
+        self.AlfvenicPoint()
+        pos_xA =  (self.x_A-self._x_bounds[0])/(self._x_bounds[1]-self._x_bounds[0])
+        self.x_plane = int(self.cells_x*pos_xA)
+        self.CalcPlaneX()
+        midp = int(self.cells_y*self.y_choice)
+        #midp = int(self.cells_y/2)
+        a = 30
+        Density = self.rho_Al_MP[midp-a:midp+a+1]
+        Temp = self.Te_MP[midp-a:midp+a+1]
+        Vel = self.vel_x_MP[midp-a:midp+a+1]
+        By = self.B_y_MP[midp-a:midp+a+1]
+        Z = self.Zeff_MP[midp-a:midp+a+1]
+        y_vals = self.y_vals[midp-a:midp+a+1]
+        guessSine = [0.8,0.1,0.6,0.1]
+        fit,cov = sp.optimize.curve_fit(self.Sine,y_vals,Density,p0=guessSine)
+        #y_space = np.arange(self.y_vals[midp-a],self.y_vals[midp+a],0.001)
+        y_Sine = self.Sine(y_vals,fit[0],fit[1],fit[2],fit[3])
+        
+        '''
+        plt.plot(y_vals,y_Sine)
+        plt.plot(y_vals,Density)
+        plt.grid()
+        plt.show()
+        '''
+        
+        Max = max(y_Sine)
+        Min = min(y_Sine)
+        Den_vals = []
+        y_chosen = []
+        T_vals = []
+        V_vals = []
+        B_vals = []
+        Z_vals = []
+        for i in range(len(y_vals)):
+            if self.y_vals[midp] - fit[0] <= y_vals[i] <= self.y_vals[midp] + fit[0]:
+                y_chosen.append(y_vals[i])
+                Den_vals.append(Density[i])
+                T_vals.append(Temp[i])
+                V_vals.append(Vel[i])
+                B_vals.append(By[i])
+                Z_vals.append(Z[i])
+        self.rho_Al_xA = np.mean(Den_vals)
+        self.Te_xA = np.mean(T_vals)
+        self.vel_x_xA = np.mean(V_vals)
+        self.B_y_xA = np.mean(B_vals)
+        self.Z_xA = np.mean(Z_vals)
+        
+    def ReturnAlfven(self):
+        self.ParametersAlfven()
+        print("Alfvenic Point xA: ",-self._x_bounds[0] - self._r_array - self.x_A," mm from wire array")
+        print("Density at xA: ",self.rho_Al_xA," kg/m3")
+        print("Temperature at xA: ",self.Te_xA," eV")
+        print("X component of velocity at xA: ",self.vel_x_xA," m/s")
+        print("Y component of magnetic field  at xA: ",self.B_y_xA," T")
+        print("Effective Charge at xA: ",self.Z_xA)
+        
+    def TraceAlfven(self):
+        self.time = np.arange(self.t_i,self.t_f+10,10)
+        rho_Al_xA = []
+        Te_xA = []
+        vel_x_xA = []
+        B_y_xA = []
+        x_A = []
+        for i in range(len(self.time)):
+            self.t_spec = self.time[i]
+            self.ParametersAlfven()
+            x_A.append(-self._x_bounds[0] - self._r_array - self.x_A)
+            rho_Al_xA.append(self.rho_Al_xA)
+            Te_xA.append(self.Te_xA)
+            vel_x_xA.append(self.vel_x_xA)
+            B_y_xA.append(self.B_y_xA)
+        
+        if (self.y_choice - 0.5) > 0:
+            add = '+ '
+            self.y_label = add + str(np.round(2*(self.y_choice - 0.5)*self._y_bounds[1],1))+' mm from Y - Midplane'
+        elif (self.y_choice - 0.5) == 0:
+            self.y_label = 'Y - Midplane'
+        else:
+            self.y_label = str(np.round(2*(self.y_choice - 0.5)*self._y_bounds[1],1))+' mm from Y - Midplane'
+        '''
+        plt.plot(self.time,x_A,label=self.y_label)
+        plt.xlabel("Time/ns")
+        plt.ylabel("Alfvenic Point / mm")
+        #plt.ylim(0,10)
+        plt.grid()
+        plt.legend()
+        plt.savefig('MyStuff/Plots/'+self.date+'/AlfvenicPoint'+str(self.index)+'.png')
+        plt.show()
+            
+        plt.plot(self.time,rho_Al_xA,label=self.y_label)
+        plt.xlabel("Time/ns")
+        plt.ylabel("Density / $m^{-3}$")
+        plt.grid()
+        plt.legend()
+        plt.savefig('MyStuff/Plots/'+self.date+'/Density_at_xA'+str(self.index)+'.png')
+        plt.show()
+
+        plt.plot(self.time,Te_xA,label=self.y_label)
+        plt.xlabel("Time/ns")
+        plt.ylabel("Temperature / eV")
+        plt.grid()
+        plt.legend()
+        plt.savefig('MyStuff/Plots/'+self.date+'/ElectronTemperature_at_xA'+str(self.index)+'.png')
+        plt.show()
+        
+        plt.plot(self.time,vel_x_xA,label=self.y_label)
+        plt.xlabel("Time/ns")
+        plt.ylabel("$V_{x}$ / $ms^{-1}$")
+        plt.grid()
+        plt.legend()
+        plt.savefig('MyStuff/Plots/'+self.date+'/Velocity-x_at_xA'+str(self.index)+'.png')
+        plt.show()
+    
+        plt.plot(self.time,B_y_xA,label=self.y_label)
+        plt.xlabel("Time/ns")
+        plt.ylabel("$B_{y}$ / T")
+        plt.grid()
+        plt.legend()
+        plt.savefig('MyStuff/Plots/'+self.date+'/B-y_at_xA'+str(self.index)+'.png')
+        plt.show()
+        '''
+        fs = 14
+        fig0,(ax0,ax1) = plt.subplots(2,1)
+        ax0.plot(self.time,x_A,label=self.y_label)
+        ax0.set_xlabel("Time/ns",fontsize=fs)
+        ax0.set_ylabel("Alfven Point / mm",fontsize=fs)
+        #plt.ylim(0,10)
+        ax0.grid()
+        
+        ax2 = ax1.twinx()
+        ax3 = ax1.twinx()
+        ax4 = ax1.twinx()
+        
+        ax3.spines.right.set_position(("axes", 1.2))
+        ax4.spines.right.set_position(("axes", 1.4))
+        ax1.plot(self.time,rho_Al_xA,label='Density',color='green',linestyle='dashed')
+        ax2.plot(self.time,Te_xA,label='Temperature',color='blue',linestyle='dashed')
+        ax3.plot(self.time,B_y_xA,label='B field',color='orange',linestyle='dashed')
+        ax4.plot(self.time,vel_x_xA,label='x velocity',color='red',linestyle='dashed')
+        ax1.set_ylabel("Density / $m^{-3}$",fontsize=fs)
+        ax2.set_ylabel("Temperature / eV",fontsize=fs)
+        ax3.set_ylabel("$B_{y}$ / T",fontsize=fs)
+        ax4.set_ylabel("$V_{x}$ / $ms^{-1}$",fontsize=fs)
+        ax1.grid()
+        ax1.set_xlabel("Time/ns",fontsize=fs)
+        fig0.legend(fontsize=14)
+        fig0.set_size_inches(14, 6)
+        plt.tight_layout()
+        plt.savefig('MyStuff/Plots/'+self.date+'/AlfvenicPointParameters_x'+str(self.index)+'.png')
+        plt.show()
+    
+    def FindPlasmoids(self):
+        self.ChoosePlane()
+        if self.target == 'y':
+            self.CalcPlane()
+            coord = self.x_slice
+            coordlabel = self.y_label
+            crd = 'x'
+        elif self.target == 'x':
+            self.CalcPlaneX()
+            coord = self.y_slice
+            coordlabel = self.x_label
+            crd = 'y'
+        Plasmoid_pos = []
+        for i in range(len(self.P_ram)):
+            if self.P_ram[i] <= 0.00001*max(self.P_ram):
+                pos = coord[i]
+                Plasmoid_pos.append(pos)
+        return Plasmoid_pos
+    
+    def FindKnudsen(self):
+        self.ChoosePlane()
+        self.CalcPlane()
+        dBdx = np.gradient(self.B_y_MP,self.x_slice)
+        l_B_vals = (self.B_y_MP/dBdx)
+        self.l_B = np.mean(l_B_vals)/1000
+    
+    def AveragedParameters(self):
+        self.FindKnudsen()
+        self.ChoosePlane()
+        if self.target == 'y':
+            self.CalcPlane()
+        elif self.target == 'x':
+            self.CalcPlaneX()
+        
+        rho_Avg = np.mean(self.rho_Al_MP)
+        rnec_Avg = np.mean(self.rnec_MP)
+        Pressure_Avg = np.mean(self.press_MP)
+        B_y_Avg = np.mean(self.B_y_MP)
+        B_mag_Avg = np.mean(self.B_mag_MP)
+        v_x_Avg = np.mean(self.vel_x_MP)
+        v_mag_Avg = np.mean(self.vel_mag_MP)
+        res_Avg = np.mean(self.resist_MP)
+        curr_Avg = np.mean(self.curr_z_MP)
+        Ti_Avg = np.mean(self.Ti_MP)
+        Te_Avg = np.mean(self.Te_MP)
+        Z_Avg = np.mean(self.Zeff_MP)
+    
+        A = 27
+        eps_0 = 8.85*10**-12
+        mu_0 = 4*np.pi*10**-7
+        c = 3*10**8
+        e = 1.6*10**-19
+        m_e = 9.11*10**-31
+        m_p = 1.67*10**-27
+        k_B = 1.38*10**-23
+        lnL = 10
+        m_i = m_p*A
+        i_e = np.sqrt(m_i/m_e)
+        
+        dx = 5*10**-5
+        dt = 10**-8
+        
+        v_A = np.abs(B_y_Avg/(mu_0*rho_Avg)**0.5)
+        S_L = mu_0*v_A*(0.02)/res_Avg
+        f_L = np.abs(Z_Avg*e*B_y_Avg/m_i)
+        v_th = (e*Ti_Avg/m_i)**0.5
+        r_L = v_th/np.abs(f_L)
+        w_pi = ((rnec_Avg*(Z_Avg*e)**2)/(m_i*eps_0))**0.5
+        d_i = c/w_pi
+        t_i = np.sqrt(2)*i_e*(5.87*10**11)*(Te_Avg**1.5)/((Z_Avg**3)*(Z_Avg*rnec_Avg)*lnL)
+        f_i = 1/t_i
+        l_i = v_th*t_i
+        l_D = (Te_Avg/(4*np.pi*(Z_Avg*rnec_Avg)*e))**0.5
+        l_R = ((res_Avg*dt)/mu_0)**0.5
+        l_B = self.l_B
+        K_n = l_i/l_B
+        
+        print("Mean Density "+str(rho_Avg)+" kg$m^{-3}$")
+        print("Mean Number Density "+str(rnec_Avg)+" $m^{-3}$")
+        print("Mean Electron Temperature "+str(Te_Avg)+" eV")
+        print("Mean Ion Temperature "+str(Ti_Avg)+" eV")
+        print("Mean Magnetic Field "+str(B_y_Avg)+" T")
+        print("Mean Current "+str(curr_Avg)+" A")
+        print("Mean Resistivity "+str(res_Avg)+" $\03A9$m")
+        
+        print("-----------------------------")
+        print("Spatial Resolution "+str(dx)+" m")
+        print("Temporal Resolution "+str(dt)+" s")
+        
+        print("Larmor Frequency "+str(f_L)+" $s^{-1}$")
+        print("Larmor Radius "+str(r_L)+" m")
+        print("Thermal Velocity "+str(v_th)+" m$s^{-1}$")
+        print("Ion Plasma Frequency "+str(w_pi)+" $s^{-1}$")
+        print("Ion Collision Frequency "+str(f_i)+" $s^{-1}$")
+        print("Ion Mean Free Path "+str(l_i)+" m")
+        print("Debye Length "+str(l_D)+" m")
+        print("Resistive Length "+str(l_R)+" m")
+        print("Magnetic Length "+str(l_B)+" m")
+        print("Knudsen Number "+str(K_n))
+        print("Lundquist Number "+str(S_L))
+        print("Ion Collisionless Skin Depth "+str(d_i)+" m")
