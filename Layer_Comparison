@@ -1,0 +1,266 @@
+class Comparison:
+    def __init__(self,Models=['RM','WA','WA'],indices=[16,19,19],times=[250,250,290],adj=400,y_planes=[0.5,0.5,0.5],x_planes=[0.5,0.5,0.5],targets=['y','y','y'],date='25-11-24'):
+        self.indices = indices
+        self.times = times
+        self.date = date
+        self.adj = adj
+        self.Models = Models
+        self.x_planes = x_planes
+        self.y_planes = y_planes
+        self.targets = targets
+        self.Run = MagRec(Model='WA',index=19,t_i=250,t_f=350,adj=self.adj,y_plane=0.5,x_plane=0.5,title="Wire Array",target='y',date=self.date)
+        self.var = []
+        self.unit = ''
+        
+    def ChooseVar(self,val='Alfven',Dir='x'):
+        if val=='Alfven':
+            self.unit = 'm$s^{-1}$'
+            if Dir == 'x':
+                self.var = self.Run.v_A_x
+            elif Dir == 'y':
+                self.var = self.Run.v_A_y
+        elif val == 'Alfven Mach':
+            if Dir == 'x':
+                self.var = self.Run.M_A_x
+            elif Dir == 'y':
+                self.var = self.Run.M_A_y
+        elif val == 'Sonic Mach':
+            if Dir == 'x':
+                self.var = self.Run.M_s_x
+            elif Dir == 'y':
+                self.var = self.Run.M_s_y
+        elif val == 'Lundquist':
+            if Dir == 'x':
+                self.var = self.Run.Lund_x
+            elif Dir == 'y':
+                self.var = self.Run.Lund_y
+        elif val == 'Beta':
+            self.var = self.Run.Beta
+        elif val == 'Ram Pressure':
+            self.unit = 'Pa'
+            if Dir == 'x':
+                self.var = self.Run.P_ram_x
+            elif Dir == 'y':
+                self.var = self.Run.P_ram_y
+            elif Dir == 'x':
+                self.var = self.Run.P_ram_mag
+        elif val == 'Magnetic Pressure':
+            self.unit = 'Pa'
+            self.var = self.Run.P_mag
+        elif val == 'Thermal Pressure':
+            self.unit = 'Pa'
+            self.var = self.Run.P_th
+        elif val == 'Density':
+            self.unit = 'kg$m^{-3}$'
+            self.var = self.Run.rho_Al_MP
+        elif val == 'Pressure':
+            self.unit = 'Pa'
+            self.var = self.Run.press_MP
+        elif val == 'B field':
+            self.unit = 'T'
+            if Dir == 'x':
+                self.var = self.Run.B_x_MP
+            elif Dir == 'y':
+                self.var = self.Run.B_y_MP
+            elif Dir == 'z':
+                self.var = self.Run.B_z_MP
+            elif Dir == 'mag':
+                self.var = self.Run.B_mag_MP
+        elif val == 'Current':
+            self.unit = 'A'
+            if Dir == 'x':
+                self.var = self.Run.curr_x_MP
+            elif Dir == 'y':
+                self.var = self.Run.curr_y_MP
+            elif Dir == 'z':
+                self.var = self.Run.curr_z_MP
+            elif Dir == 'mag':
+                self.var = self.Run.curr_mag_MP
+        elif val == 'Ion Temperature':
+            self.unit = 'eV'
+            self.var = self.Run.Ti_MP
+        elif val == 'Electron Temperature':
+            self.unit = 'eV'
+            self.var = self.Run.Te_MP
+        elif val == 'Resistivity':
+            self.unit = '$\03A9$ m'
+            self.var = self.Run.resist_MP
+        elif val == 'Velocity':
+            self.unit = 'm$s^{-1}$'
+            if Dir == 'x':
+                self.var = self.Run.vel_x_MP
+            elif Dir == 'y':
+                self.var = self.Run.vel_y_MP
+            elif Dir == 'z':
+                self.var = self.Run.vel_z_MP
+            elif Dir == 'mag':
+                self.var = self.Run.vel_mag_MP
+        elif val == 'Number Density':
+            self.unit = '$m^{-3}$'
+            self.var = self.Run.rnec_MP
+        elif val == 'Debye Length':
+            self.unit = 'm'
+            self.var = self.Run.Debye
+        elif val == "Alfven Timescale":
+            self.unit = 's'
+            self.var = self.Run.t_A
+        elif val == "Resistive Timescale":
+            self.unit = 's'
+            self.var = self.Run.t_R
+        elif val == "Vector Potential":
+            self.unit = 'Tm'
+            self.var = self.Run.A_vec_mag_MP
+        elif val == "Effective Charge":
+            self.var = self.Run.Zeff_MP
+                
+    def Compare(self,val=['Velocity','Velocity'],Dir=['x','x']):
+        Time_vals = []
+        Param = []
+        Title = []
+        a = 0
+        b_vals = []
+        unit = []
+        for j in range(len(self.indices)):
+            if val[0] != val[j]:
+                a+=1
+                b_vals.append(1)
+            else:
+                b_vals.append(0)
+        for i in range(len(self.indices)):
+            index1 = self.indices[i]
+            Model1 = self.Models[i]
+            target1 = self.targets[i]
+            x_plane1 = self.x_planes[i]
+            y_plane1 = self.y_planes[i]
+            times1 = self.times[i]
+            val1 = val[i]
+            Dir1 = Dir[i]
+            self.Run = MagRec(Model=Model1,index=index1,t_i=times1,t_f=350,adj=self.adj,y_plane=y_plane1,x_plane=x_plane1,title="Wire Array",target=target1,date=self.date)
+            self.Run.ChoosePlane()
+            if self.Run.target == 'x':
+                self.Run.CalcPlaneX()
+                x_vals = self.Run.y_slice
+                xlabel = 'y/mm'
+            elif self.Run.target == 'y':
+                self.Run.CalcPlane()
+                x_vals = self.Run.x_slice
+                xlabel = 'x/mm'
+            self.ChooseVar(val=val1,Dir=Dir1)
+            unit1 = self.unit
+            unit.append(unit1)
+            Time_vals.append(times1)
+            Param.append(self.var)
+            if index1 == 15:
+                Title.append("RM [30mm, 300ns]")
+            elif index1 == 16:
+                Title.append("RM [45mm, 100ns]")
+            elif index1 == 19 or index1 == 10:
+                Title.append("Wire Array")
+            elif index1 == 18:
+                Title.append("H Rocket Model")
+            elif index1 == 21:
+                Title.append("Resistivity = 1e-5")
+            elif index1 == 22:
+                Title.append("Resistivity = 1e-6")
+            elif index1 == 23:
+                Title.append("Resistivity = 1e-7")
+            elif index1 == 44:
+                Title.append("MPF [-25,25]")
+            elif index1 == 54:
+                Title.append("MPF [-5,5]")
+            elif index1 == 80:
+                Title.append("Resistivity = 1e-6.75")
+            elif index1 == 40:
+                Title.append("Resistivity = 1e-6.5")
+            else:
+                Title.append("Modified Planar Flow")
+        a = 1
+        b_vals = [0,1]
+        fs = 14
+        if a == 0:
+            for i in range(len(Param)):
+                lab = Title[i] + ', Time ' + str(Time_vals[i]) + ' ns'
+                plt.plot(x_vals,Param[i],label=lab)
+            plt.grid()
+            plt.xlabel(xlabel,fontsize=fs)
+            plt.ylabel(val1+' / '+unit1,fontsize=fs)
+            plt.legend(loc='upper right',fontsize=fs)
+            plt.rcParams["figure.figsize"] = (14,6)
+            plt.tight_layout()
+            plt.savefig('MyStuff/Plots/'+self.date+'/Compared'+val1+str(self.indices)+'.png')
+            plt.show()
+        else:
+            fig,ax = plt.subplots(1,1)
+            colorlist = ['green','blue','orange','red','purple','violet']
+            ax.plot(x_vals,Param[0],label=val[0]+', Time '+str(self.times[0])+' ns at x = '+str(round((self.x_planes[0]-0.5)*(self.Run._x_bounds[1]-self.Run._x_bounds[0]),1))+' mm',color=colorlist[0])
+            ax.set_ylabel(val[0]+' / '+unit[0],fontsize=fs)
+            ax.grid()
+            #ax.set_ylim([0,0.2])
+            ax.set_xlabel(xlabel,fontsize=fs)
+            for i in range(1,len(Param)):
+                if b_vals[i] == 1:
+                    ax_copy = ax.twinx()
+                    ax_copy.plot(x_vals,Param[i],label=val[i]+', Time '+str(self.times[i])+' ns at x = '+str(round((self.x_planes[i]-0.5)*(self.Run._x_bounds[1]-self.Run._x_bounds[0]),1))+' mm',color=colorlist[i])
+                    #ax_copy.plot(x_vals,Param[i],label=val[i]+', Time '+str(self.times[i])+' ns at x = '+str(round((self.x_planes[i]-0.5)*(self.Run._x_bounds[1]-self.Run._x_bounds[0]),1))+' mm',color=colorlist[i],linestyle='dashed')
+                    #ax_copy.set_ylim([1*10**9,2*10**9])
+                    ax_copy.set_ylabel(val[i]+' / '+unit[i],fontsize=fs)
+                    ax_copy.spines.right.set_position(("axes", 1+0.1*i))
+                elif b_vals[i] == 0:
+                    ax.plot(x_vals,Param[i],label=val[i]+', Time '+str(self.times[i])+' ns at x = '+str(round((self.x_planes[i]-0.5)*(self.Run._x_bounds[1]-self.Run._x_bounds[0]),1))+' mm',color=colorlist[i])
+                    #ax.plot(x_vals,Param[i],label=val[i]+', Time '+str(self.times[i])+' ns at x = '+str(round((self.x_planes[i]-0.5)*(self.Run._x_bounds[1]-self.Run._x_bounds[0]),1))+' mm',color=colorlist[i],linestyle='dashed')
+                    ax.set_ylabel(val[i]+' / '+unit[i],fontsize=fs)
+            fig.legend(loc='lower right',fontsize=12)
+            fig.set_size_inches(14, 6)
+            plt.tight_layout()
+            plt.savefig('MyStuff/Plots/'+self.date+'/ComparedVariety'+str(self.indices)+'.png')
+            plt.show()
+            
+    
+    def CompareTraces(self,val1='Density',Dir1='x',t_i1=0,t_f1=300):
+        times = np.arange(t_i1,t_f1+10,10)
+        IndexVals = []
+        Title = []
+        for i in range(len(self.indices)):
+            index1 = self.indices[i]
+            Model1 = self.Models[i]
+            Vals = []
+            for j in range(len(times)):
+                self.Run = MagRec(Models=Model1,index=index1,t_i=times[j],t_f=t_f1,adj=self.adj,y_plane=0.5,x_plane=0.5,title="Wire Array",target='y',date=self.date)
+                self.Run.ChoosePlane()
+                self.Run.CalcPlaneX()
+                self.ChooseVar(val=val1,Dir=Dir1)
+                mean_var = np.mean(self.var)
+                Vals.append(mean_var)
+            if index1 == 16:
+                Title.append("Rocket Model")
+            elif index1 == 19:
+                Title.append("Wire Array")
+            elif index1 == 18:
+                Title.append("H Rocket Model")
+            elif index1 == 21:
+                Title.append("Resistivity = 1e-5")
+            elif index1 == 22:
+                Title.append("Resistivity = 1e-6")
+            elif index1 == 23:
+                Title.append("Resistivity = 1e-7")
+            elif index1 == 44:
+                Title.append("Frequency = 0.1 $f_{wire}$")
+            elif index1 == 48:
+                Title.append("Frequency = 0.04 $f_{wire}$")
+            elif index1 == 49:
+                Title.append("Frequency = 0.02 $f_{wire}$")
+            elif index1 == 54:
+                Title.append("MPF [-25,25]")
+            else:
+                Title.append("Modified Planar Flow")
+            IndexVals.append(Vals)
+        
+        for i in range(len(IndexVals)):
+            lab = Title[i]
+            plt.plot(times,IndexVals[i],label=lab)
+        plt.grid()
+        plt.xlabel("x/mm")
+        plt.ylabel(val1)
+        plt.legend(loc='upper left',fontsize=8)
+        plt.savefig('MyStuff/Plots/'+self.date+'/Compared'+val1+'Trace'+str(self.indices)+'.png')
+        plt.show()
